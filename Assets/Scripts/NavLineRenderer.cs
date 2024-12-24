@@ -8,7 +8,12 @@ public class NavLineRenderer : MonoBehaviour
     public Transform target; // Holds the target's transform
     public NavMeshAgent agent; // Holds the NavMeshAgent
 
-    void Start()
+    /*  private void Start()
+     {
+         startNavMesh();
+     } */
+
+    public void startNavMesh()
     {
         // Get the LineRenderer and NavMeshAgent components
         line = GetComponent<LineRenderer>();
@@ -25,18 +30,40 @@ public class NavLineRenderer : MonoBehaviour
         agent.updateUpAxis = false;   // Prevents NavMeshAgent from adjusting the object's height
     }
 
+    private Vector3 GetValidNavMeshPosition(Vector3 position)
+    {
+        NavMeshHit hit;
+        if (NavMesh.SamplePosition(position, out hit, 1.0f, NavMesh.AllAreas))
+        {
+            return hit.position;
+        }
+        else
+        {
+            Debug.LogWarning("Target position is not on the NavMesh.");
+            return position; // Fallback to the original position
+        }
+    }
+
     private IEnumerator GetPath()
     {
-        // Set the destination for the agent
-        agent.SetDestination(target.position);
+        Vector3 validTargetPosition = GetValidNavMeshPosition(target.position);
+        agent.SetDestination(validTargetPosition);
 
-        // Wait for the path calculation to complete
-        yield return new WaitForEndOfFrame();
+        // Wait until the path is calculated
+        while (agent.pathPending)
+        {
+            yield return null;
+        }
 
-        // Draw the path
-        DrawPath(agent.path);
+        if (agent.hasPath)
+        {
+            DrawPath(agent.path);
+        }
+        else
+        {
+            Debug.LogWarning("Path could not be generated.");
+        }
 
-        // Stop the agent if you don't want it to move
         agent.isStopped = true;
     }
 
